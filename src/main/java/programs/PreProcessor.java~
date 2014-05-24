@@ -1,0 +1,141 @@
+package programs;
+
+import com.maxmind.geoip2.exception.GeoIp2Exception;
+import static com.sun.org.apache.xalan.internal.xsltc.compiler.util.Type.Int;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+
+
+public class PreProcessor {
+        
+    private File input;
+    
+    public PreProcessor(File file){
+        this.input = file;
+    }
+        
+    
+    public String timeConverter(String time){
+        String[] results = time.split(":");
+        Integer finalTime = (Integer.parseInt(results[0])) * 5;
+       
+        return finalTime.toString();
+    }
+    
+    
+    
+    public String protocolConverter(String protocol) {
+        if(protocol.equals("UDP"))
+            return "5";
+        else
+            return "10";
+    }
+    
+    
+    public void logToVector() throws FileNotFoundException, IOException, GeoIp2Exception{
+        
+        //Create a PortHash object
+        PortHash ph = new PortHash();
+        
+        //Create IpHash object
+        IpHash ih = new IpHash();
+        
+        //Create the new File
+        File vectorFile = new File("Dataset1.csv");
+        if (!vectorFile.exists())
+            vectorFile.createNewFile();
+        
+        
+        //Initialize the writer
+        FileWriter fw = new FileWriter(vectorFile.getAbsoluteFile());
+        BufferedWriter bw = new BufferedWriter(fw);
+        
+        
+        //Declare the String builder
+        StringBuilder sb;
+                
+        
+        //Declare the Tokenizer and read line by line
+        StringTokenizer st;
+        BufferedReader br = new BufferedReader(new FileReader(input));
+        String line;
+        String currentToken;
+	String localIpAddress;
+        String location;
+        String port;
+        
+        while ((line = br.readLine()) != null) {
+            st = new StringTokenizer(line,",");
+            sb = new StringBuilder();
+
+            //Skip few tokens
+            st.nextToken();
+            st.nextToken();
+            st.nextToken();
+
+            //Time
+            //currentToken = (st.nextToken().toString());
+            //sb.append(timeConverter(currentToken)).append(",");
+	    st.nextToken();
+	    
+	    //Byte size
+            sb.append(st.nextToken().toString()).append(",");
+ 
+            //Skip a token
+            st.nextToken();
+
+            //Remote IP address
+            localIpAddress = st.nextToken().toString();
+            
+            if(localIpAddress.toString().equals("0.0.0.0")){
+                continue;
+            }
+            else{
+            location = ih.getLocation(localIpAddress);
+            if(location == null)
+                continue;
+            else{
+                if(ih.hasLocation(location))
+                    ;
+                else
+                    ih.putLocation(location);
+            }
+            
+            sb.append(ih.getValue(location).toString()).append(",");
+            st.nextToken();
+            st.nextToken();
+
+            
+
+            //Local Port
+            port = st.nextToken().toString();
+            if(ph.hasPort(port))
+                ;
+            else
+                ph.putPort(port);
+            
+            sb.append(ph.getValue(port)).append(",");
+            sb.append(protocolConverter(st.nextToken().toString()));
+                     
+            sb.append("\n");
+            bw.write(sb.toString());
+            
+            }
+            
+            
+        }
+        
+        bw.close();
+        br.close();
+        ph.printMap();
+        ih.printMap();
+    }
+    
+}
